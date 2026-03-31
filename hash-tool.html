@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>HashSec — Hash Generator & Identifier</title>
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --bg: #050508;
+      --panel: #0c0c12;
+      --border: #1a1a2e;
+      --border2: #252540;
+      --green: #00ff9d;
+      --green-dim: rgba(0,255,157,0.12);
+      --green-glow: rgba(0,255,157,0.06);
+      --cyan: #00d4ff;
+      --red: #ff4466;
+      --yellow: #ffd600;
+      --text: #c8d0e0;
+      --muted: #4a5068;
+      --mono: 'Share Tech Mono', monospace;
+      --sans: 'Rajdhani', sans-serif;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem 1rem 4rem;
+      overflow-x: hidden;
+    }
+
+    /* Scanline overlay */
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px);
+      pointer-events: none; z-index: 999;
+    }
+
+    /* Grid background */
+    body::after {
+      content: '';
+      position: fixed; inset: 0;
+      background-image:
+        linear-gradient(rgba(0,255,157,0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,255,157,0.025) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none; z-index: 0;
+    }
+
+    .wrapper { position: relative; z-index: 1; width: 100%; max-width: 820px; }
+
+    /* HEADER */
+    header { text-align: center; margin-bottom: 2.5rem; padding-top: 1rem; }
+    .header-tag {
+      font-family: var(--mono); font-size: 0.68rem; color: var(--green);
+      letter-spacing: 0.2em; text-transform: uppercase;
+      border: 1px solid rgba(0,255,157,0.2); display: inline-block;
+      padding: 0.3rem 1rem; border-radius: 2px; margin-bottom: 1.2rem;
+      background: var(--green-glow);
+    }
+    h1 {
+      font-family: var(--sans); font-size: clamp(2.4rem, 6vw, 4rem);
+      font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;
+      color: #fff; line-height: 1;
+    }
+    h1 span { color: var(--green); }
+    .header-sub {
+      font-family: var(--mono); font-size: 0.75rem; color: var(--muted);
+      margin-top: 0.6rem; letter-spacing: 0.08em;
+    }
+
+    /* PANEL */
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+      margin-bottom: 1.2rem;
+      position: relative;
+    }
+    .panel::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; height: 1px;
+      background: linear-gradient(90deg, transparent, var(--green), transparent);
+      opacity: 0.4;
+    }
+    .panel-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0.8rem 1.2rem;
+      border-bottom: 1px solid var(--border);
+      background: rgba(0,255,157,0.03);
+    }
+    .panel-title {
+      font-family: var(--mono); font-size: 0.72rem; color: var(--green);
+      letter-spacing: 0.15em; text-transform: uppercase;
+      display: flex; align-items: center; gap: 0.6rem;
+    }
+    .panel-title::before { content: '▶'; font-size: 0.5rem; }
+    .panel-dots { display: flex; gap: 0.4rem; }
+    .panel-dot { width: 8px; height: 8px; border-radius: 50%; }
+    .panel-body { padding: 1.4rem; }
+
+    /* INPUT */
+    .input-area {
+      position: relative;
+    }
+    textarea {
+      width: 100%; min-height: 110px;
+      background: #080810; color: var(--text);
+      border: 1px solid var(--border2); border-radius: 4px;
+      font-family: var(--mono); font-size: 0.85rem;
+      padding: 1rem; resize: vertical; outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      line-height: 1.6;
+    }
+    textarea:focus { border-color: rgba(0,255,157,0.4); box-shadow: 0 0 0 3px rgba(0,255,157,0.06); }
+    textarea::placeholder { color: var(--muted); }
+
+    .char-count {
+      position: absolute; bottom: 0.6rem; right: 0.8rem;
+      font-family: var(--mono); font-size: 0.62rem; color: var(--muted);
+    }
+
+    /* ALGO GRID */
+    .algo-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+      gap: 0.5rem; margin: 1rem 0;
+    }
+    .algo-btn {
+      background: #080810; border: 1px solid var(--border2);
+      color: var(--muted); font-family: var(--mono); font-size: 0.72rem;
+      padding: 0.55rem 0.5rem; border-radius: 4px; cursor: pointer;
+      text-align: center; transition: all 0.18s; letter-spacing: 0.05em;
+      text-transform: uppercase; user-select: none;
+    }
+    .algo-btn:hover { border-color: rgba(0,255,157,0.3); color: var(--text); }
+    .algo-btn.active {
+      background: var(--green-dim); border-color: var(--green);
+      color: var(--green); box-shadow: 0 0 12px rgba(0,255,157,0.08);
+    }
+
+    /* ACTION BUTTONS */
+    .actions { display: flex; gap: 0.8rem; flex-wrap: wrap; margin-top: 1rem; }
+    .btn {
+      font-family: var(--mono); font-size: 0.78rem; letter-spacing: 0.1em;
+      text-transform: uppercase; padding: 0.65rem 1.6rem; border-radius: 4px;
+      cursor: pointer; border: none; transition: all 0.2s; font-weight: 600;
+    }
+    .btn-primary {
+      background: var(--green); color: #000;
+    }
+    .btn-primary:hover { box-shadow: 0 0 20px rgba(0,255,157,0.35); transform: translateY(-1px); }
+    .btn-secondary {
+      background: transparent; color: var(--muted); border: 1px solid var(--border2);
+    }
+    .btn-secondary:hover { border-color: var(--muted); color: var(--text); }
+    .btn-danger {
+      background: transparent; color: var(--red); border: 1px solid rgba(255,68,102,0.3);
+    }
+    .btn-danger:hover { background: rgba(255,68,102,0.08); }
+
+    /* RESULTS */
+    .results-list { display: flex; flex-direction: column; gap: 0.6rem; }
+    .result-row {
+      background: #080810; border: 1px solid var(--border);
+      border-radius: 4px; padding: 0.9rem 1rem;
+      display: flex; align-items: center; gap: 1rem;
+      transition: border-color 0.2s; animation: rowIn 0.3s ease forwards;
+      opacity: 0;
+    }
+    @keyframes rowIn { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: translateX(0); } }
+    .result-row:hover { border-color: var(--border2); }
+    .result-algo {
+      font-family: var(--mono); font-size: 0.68rem; color: var(--green);
+      background: var(--green-glow); border: 1px solid rgba(0,255,157,0.15);
+      padding: 0.2rem 0.55rem; border-radius: 3px; white-space: nowrap;
+      min-width: 80px; text-align: center; text-transform: uppercase; letter-spacing: 0.08em;
+    }
+    .result-hash {
+      font-family: var(--mono); font-size: 0.78rem; color: var(--cyan);
+      word-break: break-all; flex: 1;
+    }
+    .copy-btn {
+      background: none; border: 1px solid var(--border2); color: var(--muted);
+      font-family: var(--mono); font-size: 0.65rem; padding: 0.3rem 0.6rem;
+      border-radius: 3px; cursor: pointer; white-space: nowrap;
+      transition: all 0.15s; text-transform: uppercase; letter-spacing: 0.05em;
+    }
+    .copy-btn:hover { border-color: var(--green); color: var(--green); }
+    .copy-btn.copied { color: var(--green); border-color: var(--green); }
+
+    /* IDENTIFIER */
+    .identify-input-wrap { display: flex; gap: 0.6rem; }
+    .identify-input {
+      flex: 1; background: #080810; color: var(--text);
+      border: 1px solid var(--border2); border-radius: 4px;
+      font-family: var(--mono); font-size: 0.82rem; padding: 0.7rem 1rem;
+      outline: none; transition: border-color 0.2s;
+    }
+    .identify-input:focus { border-color: rgba(0,255,157,0.4); }
+    .identify-input::placeholder { color: var(--muted); }
+
+    /* IDENTIFY RESULT */
+    .id-result {
+      margin-top: 1rem; padding: 1rem 1.2rem;
+      background: #080810; border: 1px solid var(--border);
+      border-radius: 4px; display: none;
+      animation: rowIn 0.3s ease forwards;
+    }
+    .id-result.show { display: block; }
+    .id-match {
+      font-family: var(--mono); font-size: 0.78rem;
+      display: flex; align-items: flex-start; gap: 1rem; flex-wrap: wrap;
+    }
+    .id-label { color: var(--muted); font-size: 0.7rem; margin-bottom: 0.3rem; letter-spacing: 0.08em; }
+    .id-type {
+      font-size: 1rem; font-weight: 700; font-family: var(--sans);
+      letter-spacing: 0.05em; text-transform: uppercase;
+    }
+    .id-detail { font-size: 0.72rem; color: var(--muted); margin-top: 0.4rem; line-height: 1.6; }
+    .id-confidence {
+      font-family: var(--mono); font-size: 0.68rem; padding: 0.2rem 0.6rem;
+      border-radius: 3px; white-space: nowrap; align-self: flex-start;
+    }
+    .conf-high { color: var(--green); background: var(--green-glow); border: 1px solid rgba(0,255,157,0.2); }
+    .conf-med { color: var(--yellow); background: rgba(255,214,0,0.08); border: 1px solid rgba(255,214,0,0.2); }
+    .conf-low { color: var(--red); background: rgba(255,68,102,0.08); border: 1px solid rgba(255,68,102,0.2); }
+    .id-unknown { color: var(--red); font-family: var(--mono); font-size: 0.82rem; }
+
+    /* STATUS BAR */
+    .status-bar {
+      display: flex; align-items: center; gap: 1.5rem;
+      padding: 0.6rem 1.2rem;
+      border-top: 1px solid var(--border);
+      font-family: var(--mono); font-size: 0.65rem; color: var(--muted);
+      background: rgba(0,0,0,0.2);
+    }
+    .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: blink 2s infinite; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+    /* FOOTER */
+    footer {
+      text-align: center; margin-top: 2rem;
+      font-family: var(--mono); font-size: 0.65rem; color: var(--muted);
+      letter-spacing: 0.1em;
+    }
+    footer a { color: var(--green); text-decoration: none; }
+
+    /* TOAST */
+    .toast {
+      position: fixed; bottom: 2rem; right: 2rem;
+      background: var(--panel); border: 1px solid var(--green);
+      color: var(--green); font-family: var(--mono); font-size: 0.75rem;
+      padding: 0.7rem 1.2rem; border-radius: 4px; z-index: 1000;
+      opacity: 0; transform: translateY(10px);
+      transition: all 0.2s; pointer-events: none;
+      box-shadow: 0 0 20px rgba(0,255,157,0.15);
+    }
+    .toast.show { opacity: 1; transform: translateY(0); }
+
+    /* EMPTY STATE */
+    .empty-state {
+      text-align: center; padding: 2rem;
+      font-family: var(--mono); font-size: 0.72rem; color: var(--muted);
+      letter-spacing: 0.1em;
+    }
+    .empty-state .empty-icon { font-size: 2rem; margin-bottom: 0.5rem; opacity: 0.3; }
+
+    @media (max-width: 600px) {
+      .identify-input-wrap { flex-direction: column; }
+      .result-row { flex-wrap: wrap; }
+      .actions { flex-direction: column; }
+      .btn { text-align: center; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="wrapper">
+
+  <header>
+    <div class="header-tag">⬡ Cybersecurity Tool</div>
+    <h1>Hash<span>Sec</span></h1>
+    <p class="header-sub">// hash_generator &amp; identifier — v1.0.0</p>
+  </header>
+
+  <!-- GENERATOR -->
+  <div class="panel">
+    <div class="panel-header">
+      <div class="panel-title">Hash Generator</div>
+      <div class="panel-dots">
+        <div class="panel-dot" style="background:#ff4466"></div>
+        <div class="panel-dot" style="background:#ffd600"></div>
+        <div class="panel-dot" style="background:#00ff9d"></div>
+      </div>
+    </div>
+    <div class="panel-body">
+      <div class="input-area">
+        <textarea id="inputText" placeholder="Enter text to hash... (passwords, file contents, strings)" oninput="updateCharCount()"></textarea>
+        <span class="char-count" id="charCount">0 chars</span>
+      </div>
+
+      <div class="algo-grid" id="algoGrid">
+        <div class="algo-btn active" data-algo="MD5">MD5</div>
+        <div class="algo-btn active" data-algo="SHA-1">SHA-1</div>
+        <div class="algo-btn active" data-algo="SHA-256">SHA-256</div>
+        <div class="algo-btn active" data-algo="SHA-384">SHA-384</div>
+        <div class="algo-btn active" data-algo="SHA-512">SHA-512</div>
+        <div class="algo-btn" data-algo="SHA-224">SHA-224</div>
+      </div>
+
+      <div class="actions">
+        <button class="btn btn-primary" onclick="generateHashes()">⚡ Generate Hashes</button>
+        <button class="btn btn-secondary" onclick="selectAll()">Select All</button>
+        <button class="btn btn-secondary" onclick="selectNone()">None</button>
+        <button class="btn btn-danger" onclick="clearAll()">✕ Clear</button>
+      </div>
+    </div>
+
+    <!-- RESULTS -->
+    <div id="resultsWrap" style="border-top: 1px solid var(--border); padding: 1.2rem 1.4rem;">
+      <div class="empty-state" id="emptyState">
+        <div class="empty-icon">⬡</div>
+        <div>no hashes generated yet — enter text above</div>
+      </div>
+      <div class="results-list" id="resultsList"></div>
+    </div>
+
+    <div class="status-bar">
+      <div class="status-dot"></div>
+      <span id="statusText">ready — select algorithms and enter text</span>
+      <span style="margin-left:auto;">WebCrypto API</span>
+    </div>
+  </div>
+
+  <!-- IDENTIFIER -->
+  <div class="panel">
+    <div class="panel-header">
+      <div class="panel-title">Hash Identifier</div>
+      <div class="panel-dots">
+        <div class="panel-dot" style="background:#ff4466"></div>
+        <div class="panel-dot" style="background:#ffd600"></div>
+        <div class="panel-dot" style="background:#00ff9d"></div>
+      </div>
+    </div>
+    <div class="panel-body">
+      <p style="font-size:0.85rem; color:var(--muted); margin-bottom:1rem; font-family:var(--mono);">// paste an unknown hash to identify its algorithm</p>
+      <div class="identify-input-wrap">
+        <input class="identify-input" id="identifyInput" type="text" placeholder="Paste hash here e.g. 5f4dcc3b5aa765d61d8327deb882cf99" oninput="autoIdentify()" />
+        <button class="btn btn-primary" onclick="identifyHash()">Identify</button>
+      </div>
+
+      <div class="id-result" id="idResult">
+        <div class="id-label">DETECTION RESULT</div>
+        <div class="id-match" id="idMatch"></div>
+      </div>
+    </div>
+
+    <div class="status-bar">
+      <div class="status-dot"></div>
+      <span id="idStatusText">waiting for input</span>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  Built by <a href="https://github.com/MohammedAslam615">MohammedAslam615</a> · HashSec v1.0 · All processing done locally in your browser
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // ─── MD5 Implementation ───────────────────────────────────────────────────
+  function md5(str) {
+    function safeAdd(x,y){var lsw=(x&0xffff)+(y&0xffff),msw=(x>>16)+(y>>16)+(lsw>>16);return(msw<<16)|(lsw&0xffff);}
+    function bitRotateLeft(num,cnt){return(num<<cnt)|(num>>>(32-cnt));}
+    function md5cmn(q,a,b,x,s,t){return safeAdd(bitRotateLeft(safeAdd(safeAdd(a,q),safeAdd(x,t)),s),b);}
+    function md5ff(a,b,c,d,x,s,t){return md5cmn((b&c)|((~b)&d),a,b,x,s,t);}
+    function md5gg(a,b,c,d,x,s,t){return md5cmn((b&d)|(c&(~d)),a,b,x,s,t);}
+    function md5hh(a,b,c,d,x,s,t){return md5cmn(b^c^d,a,b,x,s,t);}
+    function md5ii(a,b,c,d,x,s,t){return md5cmn(c^(b|(~d)),a,b,x,s,t);}
+    var m=[], i, l=str.length, s8=Array(str.length);
+    for(i=0;i<l;i++){s8[i]=str.charCodeAt(i);}
+    m[l>>2]|=0x80<<((l%4)<<3);m[(((l+64)>>>9)<<4)+14]=l*8;
+    var a=1732584193,b=-271733879,c=-1732584194,d=271733878,nn;
+    for(i=0;i<m.length;i+=16){
+      var aa=a,bb=b,cc=c,dd=d;
+      a=md5ff(a,b,c,d,m[i],7,-680876936);d=md5ff(d,a,b,c,m[i+1],12,-389564586);
+      c=md5ff(c,d,a,b,m[i+2],17,606105819);b=md5ff(b,c,d,a,m[i+3],22,-1044525330);
+      a=md5ff(a,b,c,d,m[i+4],7,-176418897);d=md5ff(d,a,b,c,m[i+5],12,1200080426);
+      c=md5ff(c,d,a,b,m[i+6],17,-1473231341);b=md5ff(b,c,d,a,m[i+7],22,-45705983);
+      a=md5ff(a,b,c,d,m[i+8],7,1770035416);d=md5ff(d,a,b,c,m[i+9],12,-1958414417);
+      c=md5ff(c,d,a,b,m[i+10],17,-42063);b=md5ff(b,c,d,a,m[i+11],22,-1990404162);
+      a=md5ff(a,b,c,d,m[i+12],7,1804603682);d=md5ff(d,a,b,c,m[i+13],12,-40341101);
+      c=md5ff(c,d,a,b,m[i+14],17,-1502002290);b=md5ff(b,c,d,a,m[i+15],22,1236535329);
+      a=md5gg(a,b,c,d,m[i+1],5,-165796510);d=md5gg(d,a,b,c,m[i+6],9,-1069501632);
+      c=md5gg(c,d,a,b,m[i+11],14,643717713);b=md5gg(b,c,d,a,m[i],20,-373897302);
+      a=md5gg(a,b,c,d,m[i+5],5,-701558691);d=md5gg(d,a,b,c,m[i+10],9,38016083);
+      c=md5gg(c,d,a,b,m[i+15],14,-660478335);b=md5gg(b,c,d,a,m[i+4],20,-405537848);
+      a=md5gg(a,b,c,d,m[i+9],5,568446438);d=md5gg(d,a,b,c,m[i+14],9,-1019803690);
+      c=md5gg(c,d,a,b,m[i+3],14,-187363961);b=md5gg(b,c,d,a,m[i+8],20,1163531501);
+      a=md5gg(a,b,c,d,m[i+13],5,-1444681467);d=md5gg(d,a,b,c,m[i+2],9,-51403784);
+      c=md5gg(c,d,a,b,m[i+7],14,1735328473);b=md5gg(b,c,d,a,m[i+12],20,-1926607734);
+      a=md5hh(a,b,c,d,m[i+5],4,-378558);d=md5hh(d,a,b,c,m[i+8],11,-2022574463);
+      c=md5hh(c,d,a,b,m[i+11],16,1839030562);b=md5hh(b,c,d,a,m[i+14],23,-35309556);
+      a=md5hh(a,b,c,d,m[i+1],4,-1530992060);d=md5hh(d,a,b,c,m[i+4],11,1272893353);
+      c=md5hh(c,d,a,b,m[i+7],16,-155497632);b=md5hh(b,c,d,a,m[i+10],23,-1094730640);
+      a=md5hh(a,b,c,d,m[i+13],4,681279174);d=md5hh(d,a,b,c,m[i],11,-358537222);
+      c=md5hh(c,d,a,b,m[i+3],16,-722521979);b=md5hh(b,c,d,a,m[i+6],23,76029189);
+      a=md5hh(a,b,c,d,m[i+9],4,-640364487);d=md5hh(d,a,b,c,m[i+12],11,-421815835);
+      c=md5hh(c,d,a,b,m[i+15],16,530742520);b=md5hh(b,c,d,a,m[i+2],23,-995338651);
+      a=md5ii(a,b,c,d,m[i],6,-198630844);d=md5ii(d,a,b,c,m[i+7],10,1126891415);
+      c=md5ii(c,d,a,b,m[i+14],15,-1416354905);b=md5ii(b,c,d,a,m[i+5],21,-57434055);
+      a=md5ii(a,b,c,d,m[i+12],6,1700485571);d=md5ii(d,a,b,c,m[i+3],10,-1894986606);
+      c=md5ii(c,d,a,b,m[i+10],15,-1051523);b=md5ii(b,c,d,a,m[i+1],21,-2054922799);
+      a=md5ii(a,b,c,d,m[i+8],6,1873313359);d=md5ii(d,a,b,c,m[i+15],10,-30611744);
+      c=md5ii(c,d,a,b,m[i+6],15,-1560198380);b=md5ii(b,c,d,a,m[i+13],21,1309151649);
+      a=md5ii(a,b,c,d,m[i+4],6,-145523070);d=md5ii(d,a,b,c,m[i+11],10,-1120210379);
+      c=md5ii(c,d,a,b,m[i+2],15,718787259);b=md5ii(b,c,d,a,m[i+9],21,-343485551);
+      a=safeAdd(a,aa);b=safeAdd(b,bb);c=safeAdd(c,cc);d=safeAdd(d,dd);
+    }
+    function h2s(n){var s='',v;for(var i=0;i<4;i++){v=(n>>>(i*8))&0xff;s+=(v<16?'0':'')+v.toString(16);}return s;}
+    return h2s(a)+h2s(b)+h2s(c)+h2s(d);
+  }
+
+  // ─── UI Helpers ───────────────────────────────────────────────────────────
+  function updateCharCount() {
+    const v = document.getElementById('inputText').value;
+    document.getElementById('charCount').textContent = v.length + ' chars';
+  }
+
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2000);
+  }
+
+  function setStatus(msg, id='statusText') {
+    document.getElementById(id).textContent = msg;
+  }
+
+  // ─── Algo Selection ───────────────────────────────────────────────────────
+  document.getElementById('algoGrid').addEventListener('click', e => {
+    if(e.target.classList.contains('algo-btn')) e.target.classList.toggle('active');
+  });
+
+  function selectAll() {
+    document.querySelectorAll('.algo-btn').forEach(b => b.classList.add('active'));
+  }
+  function selectNone() {
+    document.querySelectorAll('.algo-btn').forEach(b => b.classList.remove('active'));
+  }
+
+  function clearAll() {
+    document.getElementById('inputText').value = '';
+    document.getElementById('charCount').textContent = '0 chars';
+    document.getElementById('resultsList').innerHTML = '';
+    document.getElementById('emptyState').style.display = 'block';
+    setStatus('cleared — ready for new input');
+  }
+
+  // ─── SHA via WebCrypto ────────────────────────────────────────────────────
+  async function sha(algo, message) {
+    const enc = new TextEncoder();
+    const data = enc.encode(message);
+    const hashBuffer = await crypto.subtle.digest(algo, data);
+    return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2,'0')).join('');
+  }
+
+  // ─── Generate ─────────────────────────────────────────────────────────────
+  async function generateHashes() {
+    const text = document.getElementById('inputText').value;
+    if (!text.trim()) { showToast('⚠ Enter text first'); return; }
+
+    const selected = [...document.querySelectorAll('.algo-btn.active')].map(b => b.dataset.algo);
+    if (!selected.length) { showToast('⚠ Select at least one algorithm'); return; }
+
+    const list = document.getElementById('resultsList');
+    const empty = document.getElementById('emptyState');
+    list.innerHTML = '';
+    empty.style.display = 'none';
+    setStatus('computing hashes...');
+
+    const algoMap = {
+      'MD5': null,
+      'SHA-1': 'SHA-1',
+      'SHA-224': 'SHA-224',
+      'SHA-256': 'SHA-256',
+      'SHA-384': 'SHA-384',
+      'SHA-512': 'SHA-512'
+    };
+
+    for (let i = 0; i < selected.length; i++) {
+      const algo = selected[i];
+      let hash;
+      try {
+        hash = algo === 'MD5' ? md5(text) : await sha(algoMap[algo], text);
+      } catch(e) {
+        hash = 'error computing hash';
+      }
+
+      const row = document.createElement('div');
+      row.className = 'result-row';
+      row.style.animationDelay = (i * 60) + 'ms';
+      row.innerHTML = `
+        <span class="result-algo">${algo}</span>
+        <span class="result-hash">${hash}</span>
+        <button class="copy-btn" onclick="copyHash(this, '${hash}')">Copy</button>
+      `;
+      list.appendChild(row);
+    }
+
+    setStatus(`${selected.length} hash${selected.length>1?'es':''} generated — ${text.length} chars input`);
+  }
+
+  function copyHash(btn, hash) {
+    navigator.clipboard.writeText(hash).then(() => {
+      btn.textContent = '✓ Copied';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1800);
+    });
+  }
+
+  // ─── Identifier ───────────────────────────────────────────────────────────
+  const HASH_DB = [
+    { name: 'MD5', bits: 128, hex: 32, detail: 'Message Digest 5 · 128-bit · Widely used, cryptographically broken. Common in legacy systems, file checksums.', conf: 'high' },
+    { name: 'SHA-1', bits: 160, hex: 40, detail: 'Secure Hash Algorithm 1 · 160-bit · Deprecated for security use since 2017. Still seen in git commits, old TLS.', conf: 'high' },
+    { name: 'SHA-224', bits: 224, hex: 56, detail: 'SHA-2 family · 224-bit · Truncated variant of SHA-256. Less common, used in some certificate applications.', conf: 'high' },
+    { name: 'SHA-256', bits: 256, hex: 64, detail: 'SHA-2 family · 256-bit · Industry standard. Used in TLS, Bitcoin, code signing, password hashing.', conf: 'high' },
+    { name: 'SHA-384', bits: 384, hex: 96, detail: 'SHA-2 family · 384-bit · Truncated variant of SHA-512. Used in TLS and high-security applications.', conf: 'high' },
+    { name: 'SHA-512', bits: 512, hex: 128, detail: 'SHA-2 family · 512-bit · Strongest SHA-2 variant. Used in high-security applications, digital signatures.', conf: 'high' },
+    { name: 'SHA-3 / Keccak-256', bits: 256, hex: 64, detail: 'SHA-3 family · 256-bit · Could also be SHA-256. Used in Ethereum blockchain. Structurally different from SHA-2.', conf: 'med' },
+    { name: 'NTLM / MD4', bits: 128, hex: 32, detail: 'Windows NTLM hash · 128-bit · Same length as MD5. Common in Active Directory environments. Target of pass-the-hash attacks.', conf: 'med' },
+    { name: 'bcrypt', bits: null, hex: null, prefix: '$2', detail: 'Adaptive password hashing · Includes salt and cost factor. Designed to be slow. Widely used for password storage.', conf: 'high' },
+    { name: 'SHA-512 crypt', bits: null, hex: null, prefix: '$6$', detail: 'Unix crypt format using SHA-512 · Common in Linux /etc/shadow. Includes salt.', conf: 'high' },
+    { name: 'SHA-256 crypt', bits: null, hex: null, prefix: '$5$', detail: 'Unix crypt format using SHA-256 · Common in Linux /etc/shadow. Includes salt.', conf: 'high' },
+    { name: 'MD5 crypt', bits: null, hex: null, prefix: '$1$', detail: 'Unix crypt MD5 format · Common in older Linux systems. Includes salt. Weak by modern standards.', conf: 'high' },
+  ];
+
+  function identifyHash() {
+    const hash = document.getElementById('identifyInput').value.trim();
+    const result = document.getElementById('idResult');
+    const match = document.getElementById('idMatch');
+    const statusEl = document.getElementById('idStatusText');
+
+    if (!hash) { showToast('⚠ Enter a hash first'); return; }
+
+    // Check prefix-based first
+    const prefixMatch = HASH_DB.find(h => h.prefix && hash.startsWith(h.prefix));
+    if (prefixMatch) {
+      showIdentifyResult(prefixMatch, hash.length);
+      statusEl.textContent = `identified: ${prefixMatch.name}`;
+      return;
+    }
+
+    // Hex hash detection
+    const isHex = /^[0-9a-fA-F]+$/.test(hash);
+    if (!isHex) {
+      match.innerHTML = `<span class="id-unknown">✕ Not a recognized hash format — not a valid hex string or known prefix.</span>`;
+      result.classList.add('show');
+      statusEl.textContent = 'unknown format';
+      return;
+    }
+
+    const len = hash.length;
+    const candidates = HASH_DB.filter(h => h.hex === len);
+
+    if (!candidates.length) {
+      match.innerHTML = `<span class="id-unknown">✕ Unknown hash length (${len} hex chars / ${len*4} bits) — no matching algorithms found.</span>`;
+      result.classList.add('show');
+      statusEl.textContent = `unknown — ${len} hex chars`;
+      return;
+    }
+
+    if (candidates.length === 1) {
+      showIdentifyResult(candidates[0], len);
+      statusEl.textContent = `identified: ${candidates[0].name}`;
+    } else {
+      // Multiple candidates
+      match.innerHTML = `
+        <div style="width:100%">
+          <div class="id-label" style="margin-bottom:0.6rem">POSSIBLE ALGORITHMS (${len} hex chars)</div>
+          ${candidates.map(c => `
+            <div style="display:flex;align-items:center;gap:0.8rem;padding:0.5rem 0;border-bottom:1px solid var(--border);">
+              <span class="result-algo">${c.name}</span>
+              <span class="id-confidence conf-${c.conf}">${c.conf} confidence</span>
+              <span style="font-size:0.72rem;color:var(--muted);font-family:var(--mono)">${c.detail.split('·')[0].trim()}</span>
+            </div>
+          `).join('')}
+        </div>
+      `;
+      result.classList.add('show');
+      statusEl.textContent = `${candidates.length} possible matches for ${len}-char hash`;
+    }
+  }
+
+  function showIdentifyResult(algo, len) {
+    const match = document.getElementById('idMatch');
+    const result = document.getElementById('idResult');
+    match.innerHTML = `
+      <div style="flex:1">
+        <div class="id-label">ALGORITHM DETECTED</div>
+        <div class="id-type" style="color:var(--green)">${algo.name}</div>
+        <div class="id-detail">${algo.detail}</div>
+        ${algo.hex ? `<div class="id-detail" style="margin-top:0.4rem;color:var(--muted)">Length: ${len} hex chars · ${len*4} bits</div>` : ''}
+      </div>
+      <span class="id-confidence conf-${algo.conf}">${algo.conf} confidence</span>
+    `;
+    result.classList.add('show');
+  }
+
+  function autoIdentify() {
+    const hash = document.getElementById('identifyInput').value.trim();
+    if (hash.length >= 16) identifyHash();
+    else {
+      document.getElementById('idResult').classList.remove('show');
+      setStatus('waiting for input', 'idStatusText');
+    }
+  }
+
+  // Enter key on identifier
+  document.getElementById('identifyInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') identifyHash();
+  });
+</script>
+</body>
+</html>
